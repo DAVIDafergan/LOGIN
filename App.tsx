@@ -3,10 +3,8 @@ import { Step, FormData, Submission } from './types';
 import * as Icons from './components/Icons';
 
 const CONTACT_PHONE = "055-667-4329";
-const ADMIN_CODE = "DA12";
+// const ADMIN_CODE = "DA12"; // נמחק למטרות אבטחה - הבדיקה עברה לשרת
 const SUPPORT_EMAIL = "DUDITATPRO@GMAIL.COM";
-// הוספנו את כתובת השרת המקומי שלך
-// שינוי לכתובת יחסית (בלי http ובלי דומיין)
 const API_BASE_URL = "/api";
 
 const App: React.FC = () => {
@@ -31,7 +29,6 @@ const App: React.FC = () => {
   const [isContactMenuOpen, setIsContactMenuOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
-  // שינוי 1: טעינת הנתונים מהשרת במקום מ-LocalStorage
   useEffect(() => {
     const fetchSubmissions = async () => {
       try {
@@ -92,17 +89,15 @@ const App: React.FC = () => {
     }
   };
 
-  // שינוי 2: שליחת הנתונים לשרת בעת הרשמה
   const handleRegister = async () => {
     const newSubmission: Submission = {
       ...formData,
-      id: Math.random().toString(36).substr(2, 9), // ID זמני לתצוגה מיידית
+      id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toLocaleString('he-IL'),
       calculatedPrice: calculatePrice.price === -1 ? "התאמה אישית" : `₪${calculatePrice.price.toLocaleString()}`
     };
     
     try {
-      // שליחה לשרת
       await fetch(`${API_BASE_URL}/submit`, {
         method: 'POST',
         headers: {
@@ -111,31 +106,45 @@ const App: React.FC = () => {
         body: JSON.stringify(newSubmission),
       });
 
-      // עדכון התצוגה המקומית (כדי שלא נצטרך לרענן את הדף)
       const updated = [newSubmission, ...submissions];
-      setSubmissions(updated); // המערכת תטען מחדש מהשרת בכניסה הבאה בכל מקרה
+      setSubmissions(updated);
       
     } catch (error) {
       console.error("Failed to save to server:", error);
       alert("שגיאת תקשורת: הנתונים לא נשמרו בשרת, אנא נסה שנית.");
-      return; // לא ממשיכים לדף ההצלחה אם הייתה שגיאה
+      return;
     }
 
     setCurrentStep(Step.Success);
   };
 
-  const handleAdminLogin = () => {
-    if (adminAuth.code === ADMIN_CODE) {
-      setAdminAuth(prev => ({ ...prev, isLoggedIn: true }));
-      // רענון נתונים מהשרת בעת כניסת מנהל
-      fetch(`${API_BASE_URL}/all-forms`)
-        .then(res => res.json())
-        .then(data => setSubmissions(data))
-        .catch(e => console.error(e));
-        
-      setCurrentStep(Step.Admin);
-    } else {
-      alert("קוד גישה שגוי.");
+  // --- הפונקציה המאובטחת החדשה ---
+  const handleAdminLogin = async () => {
+    try {
+      // שליחת הסיסמה לבדיקה בשרת
+      const response = await fetch(`${API_BASE_URL}/admin-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: adminAuth.code })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAdminAuth(prev => ({ ...prev, isLoggedIn: true }));
+        // רענון נתונים מהשרת לאחר כניסה מוצלחת
+        fetch(`${API_BASE_URL}/all-forms`)
+          .then(res => res.json())
+          .then(data => setSubmissions(data))
+          .catch(e => console.error(e));
+          
+        setCurrentStep(Step.Admin);
+      } else {
+        alert("קוד גישה שגוי.");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("שגיאת תקשורת בבדיקת הסיסמה");
     }
   };
 
@@ -143,8 +152,6 @@ const App: React.FC = () => {
     if (confirm("האם למחוק? (הערה: המחיקה כרגע היא מקומית בלבד בתצוגה)")) {
       const updated = submissions.filter(s => s.id !== id);
       setSubmissions(updated);
-      // כאן ניתן להוסיף קריאה לשרת למחיקה בעתיד:
-      // fetch(`${API_BASE_URL}/delete/${id}`, { method: 'DELETE' });
     }
   };
 

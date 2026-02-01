@@ -77,6 +77,18 @@ app.get('/api/all-forms', async (req, res) => {
   }
 });
 
+// --- נתיב בדיקת סיסמת מנהל ---
+app.post('/api/admin-login', (req, res) => {
+  const { code } = req.body;
+  
+  // בדיקה מול המשתנה המאובטח בשרת
+  if (code === process.env.ADMIN_PASSWORD) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ success: false, message: "סיסמה שגויה" });
+  }
+    
+});
 // --- הגשת האתר ---
 app.use(express.static(path.join(__dirname, 'dist')));
 app.get(/.*/, (req, res) => {
