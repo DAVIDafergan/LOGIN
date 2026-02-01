@@ -6,7 +6,7 @@ const CONTACT_PHONE = "055-667-4329";
 const ADMIN_CODE = "DA12";
 const SUPPORT_EMAIL = "DUDITATPRO@GMAIL.COM";
 // הוספנו את כתובת השרת המקומי שלך
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = "http://127.0.0.1:3000/api";
 
 const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<Step>(Step.Welcome);
