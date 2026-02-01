@@ -258,12 +258,19 @@ const App: React.FC = () => {
           </div>
         );
 
-      case Step.ClearingDetails:
+    case Step.ClearingDetails:
         return (
           <div className="space-y-8 transition-step">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">הגדרות סליקה</h2>
             <div className="space-y-4">
-                <label className="block text-xs font-black text-slate-800 uppercase tracking-widest mr-2">מכשירי סליקה ניידים בשטח?</label>
+                <div>
+                  <label className="block text-xs font-black text-slate-800 uppercase tracking-widest mr-2">מכשירי סליקה ניידים בשטח?</label>
+                  {/* הטקסט החדש שהוספנו */}
+                  <p className="text-sm text-slate-400 font-bold mr-2 mt-1.5 mb-4">
+                    המערכת שלנו תומכת בכל מכשיר אנדרואיד וכבר מותקנת בכל מכשירי קהילות.
+                  </p>
+                </div>
+                
                 <div className="flex gap-6">
                   <button 
                     onClick={() => updateField('usesFieldDevices', 'yes')}
@@ -296,7 +303,6 @@ const App: React.FC = () => {
               />
           </div>
         );
-
       case Step.SpecialRemarks:
         return (
           <div className="space-y-6 transition-step">
@@ -334,7 +340,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="text-xl font-bold text-slate-400 opacity-60">+ מע״מ כדין</div>
                   <div className="pt-10 border-t border-slate-50 mt-8">
-                    <p className="text-slate-800 font-black text-base">המחיר כולל פתיחת מערכת TAT PRO מלאה וליווי טכני.</p>
+                    <p className="text-slate-800 font-black text-base">המחיר כולל פתיחת קמפיין מלאה בענקית הגיוס צרדי וליווי טכני.</p>
                   </div>
                 </div>
               )}
