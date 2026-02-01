@@ -50,8 +50,8 @@ app.get('/api/all-forms', async (req, res) => {
 // השרת מגיש את הקבצים מתיקיית dist שנוצרת בבנייה
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// כל בקשה שלא הולכת ל-API, תלך לאתר שלנו
-app.get('*', (req, res) => {
+// *** התיקון נמצא כאן: שינוי מ- '*' ל- '(.*)' עבור Express 5 ***
+app.get('(.*)', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
