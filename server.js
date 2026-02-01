@@ -47,11 +47,10 @@ app.get('/api/all-forms', async (req, res) => {
 });
 
 // --- החלק החדש: הגשת האתר (React) ---
-// השרת מגיש את הקבצים מתיקיית dist שנוצרת בבנייה
 app.use(express.static(path.join(__dirname, 'dist')));
 
-// *** התיקון נמצא כאן: שינוי מ- '*' ל- '(.*)' עבור Express 5 ***
-app.get('(.*)', (req, res) => {
+// *** התיקון הסופי: שימוש ב-RegEx (ללא גרשיים) ***
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
