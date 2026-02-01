@@ -14,26 +14,56 @@ const __dirname = path.dirname(__filename);
 app.use(cors());
 app.use(express.json());
 
-// חיבור למונגו
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ Connected to MongoDB!'))
-  .catch(err => console.error('❌ MongoDB error:', err));
+// --- בדיקת משתנים ---
+const uri = process.env.MONGO_URI;
+console.log("---------------------------------------------------");
+console.log("🔍 DIAGNOSTIC MODE STARTING...");
+if (!uri) {
+  console.error("❌ CRITICAL ERROR: MONGO_URI variable is MISSING!");
+} else {
+  // מדפיס רק את ההתחלה כדי לא לחשוף סיסמה, אבל לוודא שיש ערך
+  console.log("✅ MONGO_URI found. Starts with:", uri.substring(0, 20) + "...");
+}
 
-// סכמה
+// --- הגדרות חיבור למונגו ---
+// מבטל את ה-Buffering כדי לקבל שגיאה מיידית אם אין חיבור
+mongoose.set('bufferCommands', false); 
+
+mongoose.connect(uri, {
+  serverSelectionTimeoutMS: 5000 // זמן המתנה מקוצר (5 שניות) כדי לראות שגיאות מהר
+})
+.then(() => console.log('✅ MongoDB Connected Successfully!'))
+.catch(err => {
+  console.error('❌ MongoDB Connection Error:', err.message);
+  console.error('🔍 Full Error Details:', err);
+});
+
+// האזנה לאירועי חיבור
+mongoose.connection.on('connected', () => console.log('ℹ️ Mongoose event: connected'));
+mongoose.connection.on('error', (err) => console.log('ℹ️ Mongoose event: error', err));
+mongoose.connection.on('disconnected', () => console.log('ℹ️ Mongoose event: disconnected'));
+
+// --- סכמה ומודל ---
 const FormSchema = new mongoose.Schema({}, { strict: false, timestamps: true });
 const FormSubmission = mongoose.model('Submission', FormSchema);
 
-// --- ה-API שלנו ---
-
+// --- API ---
 app.post('/api/submit', async (req, res) => {
+  console.log("📥 Received form submission...");
+  
+  if (mongoose.connection.readyState !== 1) {
+    console.error("❌ Database not ready. State:", mongoose.connection.readyState);
+    return res.status(500).json({ error: "Database not connected" });
+  }
+
   try {
     const newSubmission = new FormSubmission(req.body);
     await newSubmission.save();
-    console.log("✅ New submission saved!");
+    console.log("✅ Data saved to DB!");
     res.json({ message: "Saved" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Error saving" });
+    console.error("❌ Error saving data:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -42,14 +72,13 @@ app.get('/api/all-forms', async (req, res) => {
     const allForms = await FormSubmission.find().sort({ createdAt: -1 });
     res.json(allForms);
   } catch (error) {
+    console.error("Fetching error:", error);
     res.status(500).json({ error: "Error fetching" });
   }
 });
 
-// --- החלק החדש: הגשת האתר (React) ---
+// --- הגשת האתר ---
 app.use(express.static(path.join(__dirname, 'dist')));
-
-// *** התיקון הסופי: שימוש ב-RegEx (ללא גרשיים) ***
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
