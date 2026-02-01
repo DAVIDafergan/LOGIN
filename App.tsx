@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Step, FormData, Submission } from './types';
 import * as Icons from './components/Icons';
@@ -6,6 +5,8 @@ import * as Icons from './components/Icons';
 const CONTACT_PHONE = "055-667-4329";
 const ADMIN_CODE = "DA12";
 const SUPPORT_EMAIL = "DUDITATPRO@GMAIL.COM";
+// הוספנו את כתובת השרת המקומי שלך
+const API_BASE_URL = "http://localhost:3000/api";
 
 const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<Step>(Step.Welcome);
@@ -29,15 +30,23 @@ const App: React.FC = () => {
   const [isContactMenuOpen, setIsContactMenuOpen] = useState(false);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
+  // שינוי 1: טעינת הנתונים מהשרת במקום מ-LocalStorage
   useEffect(() => {
-    const saved = localStorage.getItem('tat_pro_submissions');
-    if (saved) {
+    const fetchSubmissions = async () => {
       try {
-        setSubmissions(JSON.parse(saved));
+        const response = await fetch(`${API_BASE_URL}/all-forms`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubmissions(data);
+        } else {
+          console.error("Failed to fetch from server");
+        }
       } catch (e) {
-        console.error("Failed to load submissions", e);
+        console.error("Connection error:", e);
       }
-    }
+    };
+
+    fetchSubmissions();
   }, []);
 
   const updateField = (field: keyof FormData, value: string) => {
@@ -82,23 +91,47 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRegister = () => {
+  // שינוי 2: שליחת הנתונים לשרת בעת הרשמה
+  const handleRegister = async () => {
     const newSubmission: Submission = {
       ...formData,
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).substr(2, 9), // ID זמני לתצוגה מיידית
       timestamp: new Date().toLocaleString('he-IL'),
       calculatedPrice: calculatePrice.price === -1 ? "התאמה אישית" : `₪${calculatePrice.price.toLocaleString()}`
     };
     
-    const updated = [...submissions, newSubmission];
-    setSubmissions(updated);
-    localStorage.setItem('tat_pro_submissions', JSON.stringify(updated));
+    try {
+      // שליחה לשרת
+      await fetch(`${API_BASE_URL}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newSubmission),
+      });
+
+      // עדכון התצוגה המקומית (כדי שלא נצטרך לרענן את הדף)
+      const updated = [newSubmission, ...submissions];
+      setSubmissions(updated); // המערכת תטען מחדש מהשרת בכניסה הבאה בכל מקרה
+      
+    } catch (error) {
+      console.error("Failed to save to server:", error);
+      alert("שגיאת תקשורת: הנתונים לא נשמרו בשרת, אנא נסה שנית.");
+      return; // לא ממשיכים לדף ההצלחה אם הייתה שגיאה
+    }
+
     setCurrentStep(Step.Success);
   };
 
   const handleAdminLogin = () => {
     if (adminAuth.code === ADMIN_CODE) {
       setAdminAuth(prev => ({ ...prev, isLoggedIn: true }));
+      // רענון נתונים מהשרת בעת כניסת מנהל
+      fetch(`${API_BASE_URL}/all-forms`)
+        .then(res => res.json())
+        .then(data => setSubmissions(data))
+        .catch(e => console.error(e));
+        
       setCurrentStep(Step.Admin);
     } else {
       alert("קוד גישה שגוי.");
@@ -106,10 +139,11 @@ const App: React.FC = () => {
   };
 
   const deleteSubmission = (id: string) => {
-    if (confirm("האם למחוק?")) {
+    if (confirm("האם למחוק? (הערה: המחיקה כרגע היא מקומית בלבד בתצוגה)")) {
       const updated = submissions.filter(s => s.id !== id);
       setSubmissions(updated);
-      localStorage.setItem('tat_pro_submissions', JSON.stringify(updated));
+      // כאן ניתן להוסיף קריאה לשרת למחיקה בעתיד:
+      // fetch(`${API_BASE_URL}/delete/${id}`, { method: 'DELETE' });
     }
   };
 
@@ -406,33 +440,33 @@ const App: React.FC = () => {
                     <section className="space-y-8">
                       <h3 className="text-4xl font-black text-slate-900 border-r-[14px] border-blue-600 pr-6 tracking-tighter">ארכיטקטורת ניהול</h3>
                       <div className="bg-white p-10 rounded-[3.5rem] border shadow-sm space-y-10 hover:shadow-2xl transition-all duration-700">
-                         <FeatureRow icon={<Icons.UsersIcon />} title="מחזורים וסיירות" text="מבנה היררכי חכם: מחזור (שנה), קבוצה וסיירת. הגדרת יעדי ביניים לכל צוות שטח בנפרד." />
-                         <FeatureRow icon={<Icons.PhoneIcon />} title="ניהול רשימות שיחה" text="פורטל נציג ייעודי עם Call Lists חכמים, חיוג בלחיצה, תסריטי שיחה ודיווח תוצאה מהיר." />
+                          <FeatureRow icon={<Icons.UsersIcon />} title="מחזורים וסיירות" text="מבנה היררכי חכם: מחזור (שנה), קבוצה וסיירת. הגדרת יעדי ביניים לכל צוות שטח בנפרד." />
+                          <FeatureRow icon={<Icons.PhoneIcon />} title="ניהול רשימות שיחה" text="פורטל נציג ייעודי עם Call Lists חכמים, חיוג בלחיצה, תסריטי שיחה ודיווח תוצאה מהיר." />
                       </div>
                     </section>
 
                     <section className="space-y-8">
                       <h3 className="text-4xl font-black text-slate-900 border-r-[14px] border-blue-600 pr-6 tracking-tighter">פיננסי & ריפורטינג</h3>
                       <div className="bg-slate-900 text-white p-10 rounded-[3.5rem] shadow-3xl relative overflow-hidden h-full">
-                         <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/10 blur-[90px] rounded-full"></div>
-                         <div className="space-y-10 relative z-10">
-                           <FeatureRow icon={<Icons.ShekelIcon />} title="עדכון מזומן חכם" text="דיווח מזומן וצ'קים מהשטח עם אישור מנהל קליק אחד. הכסף נספר מיידית ללא המתנה." light />
-                           <FeatureRow icon={<Icons.CreditCardIcon />} title="API סליקה מלא" text="חיבור שקוף לכל חברות הסליקה המובילות. שיוך אוטומטי של תרומות לנציגים ולמתרימים." light />
-                         </div>
+                          <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-500/10 blur-[90px] rounded-full"></div>
+                          <div className="space-y-10 relative z-10">
+                            <FeatureRow icon={<Icons.ShekelIcon />} title="עדכון מזומן חכם" text="דיווח מזומן וצ'קים מהשטח עם אישור מנהל קליק אחד. הכסף נספר מיידית ללא המתנה." light />
+                            <FeatureRow icon={<Icons.CreditCardIcon />} title="API סליקה מלא" text="חיבור שקוף לכל חברות הסליקה המובילות. שיוך אוטומטי של תרומות לנציגים ולמתרימים." light />
+                          </div>
                       </div>
                     </section>
                   </div>
 
                   <div className="bg-white/60 p-12 rounded-[4rem] border border-blue-100/50 space-y-10 shadow-sm backdrop-blur-sm">
-                     <div className="text-center space-y-3">
+                      <div className="text-center space-y-3">
                         <h3 className="text-4xl font-black text-slate-900 tracking-tighter">מסכי רתימה (BIG SCREEN)</h3>
                         <p className="text-slate-500 font-bold text-lg">חווית הגיוס באולם המרכזי ובישיבה</p>
-                     </div>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         <FeatureBox title="אפקטים בלייב" text="כל תרומה גדולה מקבלת סאונד, זיקוקים ותצוגה מרהיבה על המסך הגדול." color="bg-blue-50" />
                         <FeatureBox title="טבלת שגרירים" text="תחרותיות חיובית עם טבלת מובילים דינמית המתעדכנת בכל שניה." color="bg-indigo-50" />
                         <FeatureBox title="הגרלות אוטומטיות" text="מנגנון הגרלה מובנה שמופעל ברגע שמגיעים ליעד ביניים." color="bg-purple-50" />
-                     </div>
+                      </div>
                   </div>
 
                   <div className="pt-10 border-t border-slate-200 text-center pb-16">
